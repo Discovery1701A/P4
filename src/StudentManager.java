@@ -1,7 +1,6 @@
 
 
 import java.sql.*;
-import java.sql.Connection;
 
 
 
@@ -55,18 +54,116 @@ public class StudentManager {
     }
 
     private static void addStudent() {
-        System.out.println("fffff");
+        System.out.println("Bitte geben Sie den Namen des Studierenden ein:");
+        String name = Input.getString();
+        System.out.println("Bitte geben Sie die Matrikelnummer des Studierenden ein:");
+        int matnr = Input.getInt();
+        System.out.println("Bitte geben Sie das Semester der Einschreibung ein (z.B. WS 2021/22):");
+        String semester = Input.getString(); // Semester als String einlesen
+    
+        String checkSql = "SELECT COUNT(*) FROM student WHERE matnr = ?";
+    
+    try (PreparedStatement checkStmt = connection.prepareStatement(checkSql)) {
+        checkStmt.setInt(1, matnr);
+        ResultSet rs = checkStmt.executeQuery();
+        rs.next();
+        int count = rs.getInt(1);
+
+        if (count > 0) {
+            System.out.println("Fehler: Diese Matrikelnummer ist bereits vergeben.");
+            return; // Methode beenden, ohne den Einfügevorgang auszuführen
+        }
+    } catch (SQLException e) {
+        System.out.println("Fehler bei der Überprüfung der Matrikelnummer: " + e.getMessage());
+        return;
+    }
+        
+        String sql = "INSERT INTO student (name, matnr, semester) VALUES (?, ?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, name);  // Name zuerst setzen
+            stmt.setInt(2, matnr);    // Matrikelnummer als zweites setzen
+            stmt.setString(3, semester); // Semester als drittes setzen
+    
+            stmt.executeUpdate();
+            System.out.println("Studierender erfolgreich hinzugefügt!");
+        } catch (SQLException e) {
+            System.out.println("Fehler: " + e.getMessage());
+        }
     }
 
     private static void showAllStudents() {
+
+        String sql = "SELECT * FROM student";
+        
+        try (Statement stmt = connection.createStatement()) {
+            ResultSet rs = stmt.executeQuery(sql);
+    
+            while (rs.next()) {
+               
+                String name = rs.getString("name");
+                int matnr = rs.getInt("matnr");
+                String semester = rs.getString("semester");
+    
+                System.out.println(", Name: " + name + ", Matrikelnummer: " + matnr + ", Semester: " + semester);
+            }
+        } catch (SQLException e) {
+            System.out.println("Fehler: " + e.getMessage());
+        }
+
 
     }
 
     private static void updateStudentName() {
 
+        System.out.println("Bitte geben Sie die Matrikelnummer des Studierenden ein:");
+        int matnr = Input.getInt();
+        String checkSql = "SELECT COUNT(*) FROM student WHERE matnr = ?";
+        try (PreparedStatement checkStmt = connection.prepareStatement(checkSql)) {
+            checkStmt.setInt(1, matnr);
+            ResultSet rs = checkStmt.executeQuery();
+            rs.next();
+            int count = rs.getInt(1);
+    
+            if (count != 1) {
+                System.out.println("Fehler: Diese Matrikelnummer exestiert nicht.");
+                return; // Methode beenden, ohne den Einfügevorgang auszuführen
+            }
+        } catch (SQLException e) {
+            System.out.println("Fehler bei der Überprüfung der Matrikelnummer: " + e.getMessage());
+            return;
+        }
+        System.out.println("Bitte geben Sie den neuen Namen des Studierenden ein:");
+        String name = Input.getString();
+    
+        String sql = "UPDATE student SET name = ? WHERE matnr = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, name);  // Name zuerst setzen
+            stmt.setInt(2, matnr);    // Matrikelnummer als zweites setzen
+    
+            int count = stmt.executeUpdate();
+    
+            if (count == 0) {
+                System.out.println("Fehler: Kein Studierender mit dieser Matrikelnummer gefunden.");
+            } else {
+                System.out.println("Name erfolgreich geändert!");
+            }
+        } catch (SQLException e) {
+            System.out.println("Fehler: " + e.getMessage());
+        }
+
     }
 
     private static void deleteAllStudents() {
+        String sql = "DELETE FROM student";  // Alle Einträge löschen 
+        
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(sql);
+            System.out.println("Alle Studierenden erfolgreich gelöscht!");
+        } catch (SQLException e) {
+            System.out.println("Fehler: " + e.getMessage());
+        }
 
     }
 
