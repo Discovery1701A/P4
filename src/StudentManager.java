@@ -1,13 +1,10 @@
-
-
 import java.sql.*;
-
 
 public class StudentManager {
     // Konstanten für die Datenbankverbindung
     private static final String URL = "jdbc:postgresql://localhost:5432/P42";
     private static final String USER = "postgres";
-    private static final String PASSWORD = "geheim"; 
+    private static final String PASSWORD = "geheim";
     private static Connection connection;
 
     public static void main(String[] args) {
@@ -58,24 +55,36 @@ public class StudentManager {
         }
     }
 
-    // Methode zum Hinzufügen eines neuen Studierenden
     private static void addStudent() {
         System.out.println("Bitte geben Sie den Namen des Studierenden ein:");
         String name = Input.getString();
         System.out.println("Bitte geben Sie die Matrikelnummer des Studierenden ein:");
         int matnr = Input.getInt();
-        System.out.println("Bitte geben Sie das Semester der Einschreibung ein (z.B. WS 2021/22):");
-        String semester = Input.getString(); // Semester als String einlesen
+    
+        // RegEx für Semester-Format
+        String semesterPattern = "^(WS \\d{4}/\\d{2}|SS \\d{4})$";
+        String semester;
+    
+        // Wiederhole Eingabe, bis ein gültiges Semester-Format eingegeben wird
+        while (true) {
+            System.out.println("Bitte geben Sie das Semester der Einschreibung ein (z.B. WS 2021/22 oder SS 2020):");
+            semester = Input.getString();
+    
+            if (semester.matches(semesterPattern)) {
+                break; // Gültige Eingabe
+            } else {
+                System.out.println("Ungültiges Format. Bitte geben Sie das Semester im Format 'WS 2020/21' oder 'SS 2020' ein.");
+            }
+        }
     
         // Überprüfen, ob die Matrikelnummer bereits vorhanden ist
-        String checkSql = "SELECT COUNT(*) FROM student WHERE matnr = ?";
+        String checkSql = "SELECT COUNT(*) FROM student WHERE matnr = " + matnr;
     
-        try (PreparedStatement checkStmt = connection.prepareStatement(checkSql)) {
-            checkStmt.setInt(1, matnr);
-            ResultSet rs = checkStmt.executeQuery();
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(checkSql)) {
             rs.next();
             int count = rs.getInt(1);
-
+    
             // Wenn Matrikelnummer bereits vergeben, keine weitere Aktion
             if (count > 0) {
                 System.out.println("Fehler: Diese Matrikelnummer ist bereits vergeben.");
@@ -85,36 +94,33 @@ public class StudentManager {
             System.out.println("Fehler bei der Überprüfung der Matrikelnummer: " + e.getMessage());
             return;
         }
-        
-        // Einfüge-Operation in die Tabelle 'student'
-        String sql = "INSERT INTO student (name, matnr, semester) VALUES (?, ?, ?)";
-        
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, name);  // Name einfügen
-            stmt.setInt(2, matnr);    // Matrikelnummer einfügen
-            stmt.setString(3, semester); // Semester einfügen
     
-            stmt.executeUpdate();
+        // Einfüge-Operation in die Tabelle 'student'
+        String sql = "INSERT INTO student (name, matnr, semester) VALUES ('" + name + "', " + matnr + ", '" + semester + "')";
+    
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(sql); // Übergabe an Datenbank
             System.out.println("Studierender erfolgreich hinzugefügt!");
         } catch (SQLException e) {
             System.out.println("Fehler: " + e.getMessage());
         }
     }
+ 
 
     // Methode zum Anzeigen aller Studierenden
     private static void showAllStudents() {
+        // Auswahl aller Einträge aus der Tabelle 'student'
         String sql = "SELECT * FROM student";
-        
-        try (Statement stmt = connection.createStatement()) {
-            ResultSet rs = stmt.executeQuery(sql);
-    
+
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
             // Durchlaufen und Anzeigen aller Studierenden
             while (rs.next()) {
                 String name = rs.getString("name");
                 int matnr = rs.getInt("matnr");
                 String semester = rs.getString("semester");
-    
-                System.out.println(", Name: " + name + ", Matrikelnummer: " + matnr + ", Semester: " + semester);
+
+                System.out.println("Name: " + name + ", Matrikelnummer: " + matnr + ", Semester: " + semester);
             }
         } catch (SQLException e) {
             System.out.println("Fehler: " + e.getMessage());
@@ -125,15 +131,14 @@ public class StudentManager {
     private static void updateStudentName() {
         System.out.println("Bitte geben Sie die Matrikelnummer des Studierenden ein:");
         int matnr = Input.getInt();
-        
+
         // Überprüfen, ob die Matrikelnummer existiert
-        String checkSql = "SELECT COUNT(*) FROM student WHERE matnr = ?";
-        try (PreparedStatement checkStmt = connection.prepareStatement(checkSql)) {
-            checkStmt.setInt(1, matnr);
-            ResultSet rs = checkStmt.executeQuery();
+        String checkSql = "SELECT COUNT(*) FROM student WHERE matnr = " + matnr;
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(checkSql)) {
             rs.next();
             int count = rs.getInt(1);
-    
+
             if (count != 1) {
                 System.out.println("Fehler: Diese Matrikelnummer existiert nicht.");
                 return;
@@ -142,19 +147,16 @@ public class StudentManager {
             System.out.println("Fehler bei der Überprüfung der Matrikelnummer: " + e.getMessage());
             return;
         }
-        
+
         System.out.println("Bitte geben Sie den neuen Namen des Studierenden ein:");
         String name = Input.getString();
-    
+
         // Update-Operation für den Namen
-        String sql = "UPDATE student SET name = ? WHERE matnr = ?";
-        
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, name);  // Neuer Name setzen
-            stmt.setInt(2, matnr);    // Matrikelnummer zur Identifizierung setzen
-    
-            int count = stmt.executeUpdate();
-    
+        String sql = "UPDATE student SET name = '" + name + "' WHERE matnr = " + matnr;
+
+        try (Statement stmt = connection.createStatement()) {
+            int count = stmt.executeUpdate(sql);
+
             // Überprüfen, ob Update erfolgreich war
             if (count == 0) {
                 System.out.println("Fehler: Kein Studierender mit dieser Matrikelnummer gefunden.");
@@ -168,8 +170,8 @@ public class StudentManager {
 
     // Methode zum Löschen aller Studierenden
     private static void deleteAllStudents() {
-        String sql = "DELETE FROM student";  // Alle Einträge löschen 
-        
+        String sql = "DELETE FROM student"; // Alle Einträge löschen
+
         try (Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(sql);
             System.out.println("Alle Studierenden erfolgreich gelöscht!");
