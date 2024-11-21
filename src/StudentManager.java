@@ -108,7 +108,7 @@ public class StudentManager {
     private void showAllStudents() {
         // Auswahl aller Einträge aus der Tabelle 'student'
         String sql = "SELECT * FROM student";
-
+        boolean studentFound = false;
         try (Statement stmt = connection.createStatement();
                 ResultSet rs = stmt.executeQuery(sql)) {
             // Durchlaufen und Anzeigen aller Studierenden
@@ -118,8 +118,9 @@ public class StudentManager {
                 String semester = rs.getString("semester");
 
                 System.out.println("Name: " + name + ", Matrikelnummer: " + matnr + ", Semester: " + semester);
+                studentFound = true;
             }
-            if (!rs.isBeforeFirst()) {
+            if (!studentFound) {
                 System.out.println("Keine Studierenden gefunden.");
             }
         } catch (SQLException e) {
@@ -186,16 +187,13 @@ public class StudentManager {
         }
     }
 
-    private  boolean checkMartNr(int matnr) {
-        String checkSql = "SELECT COUNT(*) FROM student WHERE matnr = " + matnr;
+    private boolean checkMartNr(int matnr) {
+        String checkSql = "SELECT * FROM student WHERE matnr = " + matnr;
         try (Statement stmt = connection.createStatement();
                 ResultSet rs = stmt.executeQuery(checkSql)) {
 
-            if (rs.next()) {
-                int count = rs.getInt(1); // Den Zähler aus der Ergebnismenge abrufen
-                return count > 0; // True, wenn mindestens ein Eintrag existiert
-            }
-            return false; // Kein Ergebnis -> Matrikelnummer existiert nicht
+            return rs.next(); // Wenn ein Eintrag gefunden wird, existiert die Matrikelnummer bereits
+
         } catch (SQLException e) {
             System.out.println("Fehler bei der Überprüfung der Matrikelnummer: " + e.getMessage());
             return false; // Bei Fehler wird die Matrikelnummer als nicht existierend behandelt
